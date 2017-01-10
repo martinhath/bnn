@@ -83,7 +83,8 @@ class PacmanTests(
 
 object PacmanTest {
   def main(args: Array[String]) {
-    val margs = Array("--backend", "c", "--genHarness", "--compile", "--test", "--debug")
+    val margs = Array("--backend", "c", "--genHarness", "--compile", "--test", "--debug",
+                      "--targetDir", "target")
 
     val testData = Utils.readDumpFile()
     val testInputs = testData.vectors.map(_(0)).toArray
