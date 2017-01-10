@@ -30,33 +30,44 @@ class GearBox(p: GearBoxParameters) extends Module {
 
     val nextReady = Bool().asInput
     val startNext = Bool().asOutput
-    val xsOut = Vec.fill(p.Next.NumberOfCores) { Bits(width = p.Next.K) }.asOutput
+    val xsOut =
+      Vec.fill(p.Next.NumberOfCores) { Bits(width = p.Next.K) }.asOutput
   }
 
   // Make bitBuffers
-  val bitBuffers = Array.fill(p.Previous.NumberOfCores)(Module(new BitToWord(p.Next.K)))
+  val bitBuffers =
+    Array.fill(p.Previous.NumberOfCores)(Module(new BitToWord(p.Next.K)))
   val bitBufferWords = Vec(bitBuffers.map(_.io.word))
-  val fillingBlock = Module(new AsyncUpDownCounter(0, 2*p.Previous.NumberOfCores, p.Previous.NumberOfCores))
-  fillingBlock.io.up    := io.prevStart
-  fillingBlock.io.down  := Reg(init=Bool(false), next=io.prevDone)
+  val fillingBlock = Module(
+    new AsyncUpDownCounter(0,
+                           2 * p.Previous.NumberOfCores,
+                           p.Previous.NumberOfCores))
+  fillingBlock.io.up := io.prevStart
+  fillingBlock.io.down := Reg(init = Bool(false), next = io.prevDone)
 
   val bitCounter = Module(new Counter(0, p.Next.K))
-  val blocksReady = Module(new UpDownCounter(0, maxReadyBlocks, p.Previous.NumberOfCores, p.Next.NumberOfCores))
+  val blocksReady = Module(
+    new UpDownCounter(0,
+                      maxReadyBlocks,
+                      p.Previous.NumberOfCores,
+                      p.Next.NumberOfCores))
 
   val signalResetBitBuffers = bitCounter.io.value === UInt(p.Next.K - 1)
-  val signalBitBuffersFull = Reg(init=Bool(false), next=io.validIn && signalResetBitBuffers)
-  val signalNewPeekBlock = io.nextReady && blocksReady.io.value >= UInt(p.Next.NumberOfCores)
-
+  val signalBitBuffersFull =
+    Reg(init = Bool(false), next = io.validIn && signalResetBitBuffers)
+  val signalNewPeekBlock = io.nextReady && blocksReady.io.value >= UInt(
+      p.Next.NumberOfCores)
 
   // Count how many ready blocks we have in the queue
-  blocksReady.io.up   := Reg(init=Bool(false), next=io.prevDone)
+  blocksReady.io.up := Reg(init = Bool(false), next = io.prevDone)
   blocksReady.io.down := signalNewPeekBlock
 
   val reservedBlocks = blocksReady.io.value + fillingBlock.io.value
-  val hasEnoughEmptyBlocks = reservedBlocks <= UInt(maxReadyBlocks - p.Previous.NumberOfCores)
+  val hasEnoughEmptyBlocks = reservedBlocks <= UInt(
+      maxReadyBlocks - p.Previous.NumberOfCores)
 
   io.ready := hasEnoughEmptyBlocks
-  io.startNext := Reg(init=Bool(false), next=signalNewPeekBlock)
+  io.startNext := Reg(init = Bool(false), next = signalNewPeekBlock)
 
   // Hook up bitBuffers to input so they get filled up
   bitBuffers.zip(io.xsIn).foreach {
@@ -77,15 +88,20 @@ class GearBox(p: GearBoxParameters) extends Module {
   val queueOutputs = Vec(queues.map(_.io.output))
 
   // Make inputSelectCounters - queues muxes over input
-  val inputSelectCounters = Array.range(0, numberOfQueues)
-    .map(i => Module(new WrappingCounter(i, numberOfQueues,
-                                         numberOfQueues - p.Previous.NumberOfCores)))
+  val inputSelectCounters = Array
+    .range(0, numberOfQueues)
+    .map(
+      i =>
+        Module(
+          new WrappingCounter(i,
+                              numberOfQueues,
+                              numberOfQueues - p.Previous.NumberOfCores)))
     .toArray
 
   inputSelectCounters.foreach(c => {
-                                c.io.enable := Reg(init=Bool(false), next=io.prevDone)
-                                c.setName("inputSelectCounter")
-                              })
+    c.io.enable := Reg(init = Bool(false), next = io.prevDone)
+    c.setName("inputSelectCounter")
+  })
 
   // Not every queue can take input if there are more queues than cores in Next
   val inputEnables = Vec(
@@ -94,47 +110,59 @@ class GearBox(p: GearBoxParameters) extends Module {
   )
 
   // Hook up queues to input
-  queues.zip(inputSelectCounters).foreach{
-    case(q, c) => {
+  queues.zip(inputSelectCounters).foreach {
+    case (q, c) => {
       q.io.writeEnable := signalBitBuffersFull && inputEnables(c.io.value)
       q.io.input := bitBufferWords(c.io.value)
     }
   }
 
   // Make queueOutputSelectCounters -  outputs muxes over queues
-  val queueOutputSelectCounters = Array.range(0, p.Next.NumberOfCores)
-    .map(i => Module(new WrappingCounter(i + numberOfQueues - p.Next.NumberOfCores, numberOfQueues, p.Next.NumberOfCores)))
+  val queueOutputSelectCounters = Array
+    .range(0, p.Next.NumberOfCores)
+    .map(
+      i =>
+        Module(
+          new WrappingCounter(i + numberOfQueues - p.Next.NumberOfCores,
+                              numberOfQueues,
+                              p.Next.NumberOfCores)))
     .toArray
 
   queueOutputSelectCounters.foreach(c => {
-                                      c.setName("queueOutputSelectCounters")
-                                      c.io.enable := signalNewPeekBlock
-                                    })
+    c.setName("queueOutputSelectCounters")
+    c.io.enable := signalNewPeekBlock
+  })
 
   // Hook up output to queues
-  io.xsOut.zip(queueOutputSelectCounters).foreach{
-    case(xs, c) => {
+  io.xsOut.zip(queueOutputSelectCounters).foreach {
+    case (xs, c) => {
       xs := queueOutputs(c.io.value)
     }
   }
 
   // Make outputSelectCounters - queues muxes over outputs
-  val outputSelectCounters = Array.range(0, numberOfQueues)
-    .map(i => Module(new WrappingCounter(i, numberOfQueues, numberOfQueues - p.Next.NumberOfCores)))
+  val outputSelectCounters = Array
+    .range(0, numberOfQueues)
+    .map(
+      i =>
+        Module(
+          new WrappingCounter(i,
+                              numberOfQueues,
+                              numberOfQueues - p.Next.NumberOfCores)))
     .toArray
 
   outputSelectCounters.foreach(c => {
-                                 c.setName("outputSelectCounters")
-                                 c.io.enable := signalNewPeekBlock
-                               })
+    c.setName("outputSelectCounters")
+    c.io.enable := signalNewPeekBlock
+  })
 
   val outputEnables = Vec(
     Array.fill(p.Next.NumberOfCores)(Bool(true))
       ++ Array.fill(numberOfQueues - p.Next.NumberOfCores)(Bool(false))
   )
 
-  queues.zip(outputSelectCounters).foreach{
-    case(q, c) => {
+  queues.zip(outputSelectCounters).foreach {
+    case (q, c) => {
       q.io.nextBlock := signalNewPeekBlock && outputEnables(c.io.value)
     }
   }

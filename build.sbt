@@ -9,4 +9,4 @@ lazy val root = Project("bnn", file("."))
                           "-feature",
                           "-unchecked",
                           "-language:reflectiveCalls")
-    )
+  )

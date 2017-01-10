@@ -2,15 +2,18 @@ package Pacman
 
 import Chisel._
 
-class Net(
-  layers: List[LayerData]) extends Module {
+class Net(layers: List[LayerData]) extends Module {
 
   val io = new Bundle {
     val ready = Bool().asOutput
     val start = Bool().asInput
-    val xsIn = Vec.fill(layers(0).parameters.NumberOfCores)(Bits(width = layers(0).parameters.K)).asInput
+    val xsIn = Vec
+      .fill(layers(0).parameters.NumberOfCores)(
+        Bits(width = layers(0).parameters.K))
+      .asInput
 
-    val xsOut = Vec.fill(layers.last.parameters.NumberOfCores)(Bits(width = 1)).asOutput
+    val xsOut =
+      Vec.fill(layers.last.parameters.NumberOfCores)(Bits(width = 1)).asOutput
     val xsOutValid = Bool().asOutput
     val done = Bool().asOutput
     val pipeReady = Bool().asInput
@@ -20,16 +23,15 @@ class Net(
     Module(new Warp(layer))
   })
 
-  val gearBoxes = layers.zip(layers.drop(1))
-    .map {
-      case (a, b) => {
-        val gearBoxParameters = new GearBoxParameters(a.parameters, b.parameters)
-        Module(new GearBox(gearBoxParameters))
-      }
+  val gearBoxes = layers.zip(layers.drop(1)).map {
+    case (a, b) => {
+      val gearBoxParameters = new GearBoxParameters(a.parameters, b.parameters)
+      Module(new GearBox(gearBoxParameters))
     }
+  }
 
   // Hook up each warp to the gear box behind it
-  warps.zip(gearBoxes).foreach{
+  warps.zip(gearBoxes).foreach {
     case (warp, gearBox) => {
       gearBox.io.xsIn := warp.io.xOut
       gearBox.io.validIn := warp.io.xOutValid
@@ -41,7 +43,7 @@ class Net(
   }
 
   // Hook up each warp to the gear box in front of it
-  gearBoxes.zip(warps.drop(1)).foreach{
+  gearBoxes.zip(warps.drop(1)).foreach {
     case (gearBox, warp) => {
       warp.io.start := gearBox.io.startNext
       warp.io.xIn := gearBox.io.xsOut

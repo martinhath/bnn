@@ -10,9 +10,10 @@ class BitToWord(K: Int) extends Module {
     val word = Bits(width = K).asOutput
   }
 
-  val regs = Array.fill(K)(Reg(Bits(width=1)))
-  when(io.enable){
-    regs.zip(regs.drop(1))
+  val regs = Array.fill(K)(Reg(Bits(width = 1)))
+  when(io.enable) {
+    regs
+      .zip(regs.drop(1))
       .foreach({
         case (a, b) => {
           b := a

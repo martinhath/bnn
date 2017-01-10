@@ -2,23 +2,25 @@ package Pacman
 
 import Chisel._
 
-class MemoryStreamer(
-  parameters: LayerParameters,
-  weightStreams: Array[Array[String]],
-  biasStream: Array[String]) extends Module {
+class MemoryStreamer(parameters: LayerParameters,
+                     weightStreams: Array[Array[String]],
+                     biasStream: Array[String])
+    extends Module {
 
   val PUsPerMU = parameters.NumberOfPUs / parameters.NumberOfMS
 
   // Assertions
-  if (weightStreams.exists(a => a.exists(s => s.length() != PUsPerMU * parameters.K + 1))) {
-    throw new AssertionError("Weights should be consistent with expected width")
+  if (weightStreams.exists(
+        a => a.exists(s => s.length() != PUsPerMU * parameters.K + 1))) {
+    throw new AssertionError(
+      "Weights should be consistent with expected width")
   }
   if (biasStream.exists(s => s.length() != parameters.BiasWidth + 1)) {
     throw new AssertionError("Biases should be consistent with BiasWidth.")
   }
 
-  val weightMemoryUnits = Range(0, parameters.NumberOfMS)
-    .map(i => Module(new MemoryUnit(weightStreams(i), PUsPerMU)))
+  val weightMemoryUnits = Range(0, parameters.NumberOfMS).map(i =>
+    Module(new MemoryUnit(weightStreams(i), PUsPerMU)))
   val biasMemoryUnit = Module(new MemoryUnit(biasStream, PUsPerMU))
 
   val io = new Bundle {
@@ -50,7 +52,6 @@ class MemoryStreamer(
         io.weights(i) := mu.io.weights(muOffset + parameters.K - 1, muOffset)
       }
     })
-
 
   // Bias
   biasMemoryUnit.io.restartIn := io.restart

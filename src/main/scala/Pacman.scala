@@ -3,7 +3,7 @@ package Pacman
 import Chisel._
 
 object PacmanSetup {
-  def getLayers : List[LayerData] = {
+  def getLayers: List[LayerData] = {
     val testData = Utils.readDumpFile()
     val parametersList = Array(
       new LayerParameters(
@@ -51,22 +51,23 @@ object PacmanSetup {
         NumberOfCores = 1
       )
     )
-    val layers = Range(0, 4).map(i =>
-      new LayerData(
-        parameters=parametersList(i),
-        weights=testData.matrices(i),
-        biases=testData.biases(i)
-      )
-    ).toList
+    val layers = Range(0, 4)
+      .map(
+        i =>
+          new LayerData(
+            parameters = parametersList(i),
+            weights = testData.matrices(i),
+            biases = testData.biases(i)
+        ))
+      .toList
 
     return layers
   }
 }
 
-
 class Pacman(
-  inDataWordWidth: Int,
-  val layers: List[LayerData] = PacmanSetup.getLayers
+    inDataWordWidth: Int,
+    val layers: List[LayerData] = PacmanSetup.getLayers
 ) extends Module {
 
   val lastLayer = layers.last
@@ -78,11 +79,12 @@ class Pacman(
   val netInputWordPerBlock = firstLayer.parameters.MatrixWidth / firstLayer.parameters.K
 
   val io = new Bundle {
-    val inDataStream = Decoupled(Bits(width=inDataWordWidth)).flip
-    val digitOut = Decoupled(UInt(width=log2Up(netAnswerWidth)))
+    val inDataStream = Decoupled(Bits(width = inDataWordWidth)).flip
+    val digitOut = Decoupled(UInt(width = log2Up(netAnswerWidth)))
   }
 
-  val widthConverter = Module(new WidthConverter(inDataWordWidth, netInputWordWidth))
+  val widthConverter = Module(
+    new WidthConverter(inDataWordWidth, netInputWordWidth))
   val interleaver = Module(new Interleaver(firstLayer.parameters))
   val net = Module(new Net(layers))
   val deinterleaver = Module(new Deinterleaver(lastLayer.parameters))

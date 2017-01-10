@@ -2,7 +2,8 @@ package Pacman
 
 import Chisel._
 
-class MemoryUnit(weightsArray: Array[String], restartDelay : Int) extends Module {
+class MemoryUnit(weightsArray: Array[String], restartDelay: Int)
+    extends Module {
 
   def resettableCounter(max: UInt, reset: Bool) = {
     val x = Reg(init = UInt(0, max.getWidth))
@@ -19,11 +20,13 @@ class MemoryUnit(weightsArray: Array[String], restartDelay : Int) extends Module
   }
 
   val restartRegs = Vec.fill(restartDelay)(Reg(init = Bool(false)))
-  restartRegs.zip(restartRegs.drop(1)).foreach({
-                                                 case (a, b) => {
-                                                   b := a
-                                                 }
-                                               })
+  restartRegs
+    .zip(restartRegs.drop(1))
+    .foreach({
+      case (a, b) => {
+        b := a
+      }
+    })
   restartRegs(0) := io.restartIn
   io.restartOut := restartRegs.last
 

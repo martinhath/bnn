@@ -10,15 +10,15 @@ class Interleaver(firstLayer: LayerParameters) extends Module {
   val wordPerBlock = firstLayer.MatrixWidth / K
 
   val io = new Bundle {
-    val wordIn = Decoupled(Bits(width=K)).flip
+    val wordIn = Decoupled(Bits(width = K)).flip
 
-    val interleavedOut = Vec.fill(cores)(Bits(width=K)).asOutput
+    val interleavedOut = Vec.fill(cores)(Bits(width = K)).asOutput
     val startOut = Bool().asOutput
     val pipeReady = Bool().asInput
   }
 
-  val queues = Array.fill(cores)(Module(new CircularPeekQueue(wordPerBlock, numberOfBlocks, K)))
-
+  val queues = Array.fill(cores)(
+    Module(new CircularPeekQueue(wordPerBlock, numberOfBlocks, K)))
 
   val wordCounter = Module(new Counter(0, wordPerBlock))
   val queueCounter = Module(new Counter(0, cores))
@@ -44,8 +44,7 @@ class Interleaver(firstLayer: LayerParameters) extends Module {
   // queue.io.input := io.wordIn.bits
   // queue.io.writeEnable := signalReadingInput
   // queue.io.nextBlock := signalNewPeekBlock
-  queues.zipWithIndex.foreach
-  {
+  queues.zipWithIndex.foreach {
     case (q, i) => {
       q.io.input := io.wordIn.bits
       q.io.writeEnable := (queueCounter.io.value === UInt(i)) && signalReadingInput
@@ -56,6 +55,6 @@ class Interleaver(firstLayer: LayerParameters) extends Module {
   }
 
   // io.wordOut := queue.io.output
-  io.startOut := Reg(init=Bool(false), next=signalNewPeekBlock)
+  io.startOut := Reg(init = Bool(false), next = signalNewPeekBlock)
   io.wordIn.ready := isReady
 }
