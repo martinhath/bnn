@@ -5,7 +5,7 @@ def read_file(name):
     with open(name, 'r') as f:
         return f.read()
 
-usage_regex = compile(r'Module\(\s*new\s+(\w+)')
+usage_regex = compile(r'new\s+(\w+)')
 def usages(file_name):
     """Given a file, find all scala classes it uses"""
     if not file_name:
